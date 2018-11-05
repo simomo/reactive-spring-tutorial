@@ -12,7 +12,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
+import java.time.Duration;
+import java.util.Date;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -35,7 +42,58 @@ public class FlixApplication {
     }
 }
 
+
+@Service
+class FlixService {
+
+    @Autowired
+    MovieRepository movieRepository;
+
+    public Flux<Movie> all() {
+        return movieRepository.findAll();
+    }
+
+    public Mono<Movie> byId(String id) {
+        return movieRepository.findById(id);
+    }
+
+    public Flux<MovieEvent> getEvents(Movie movie) {
+        Flux<Long> interval = Flux.interval(Duration.ofSeconds(1));
+        Flux<MovieEvent> events = Flux.fromStream(Stream.generate(() -> new MovieEvent(movie, new Date(), randomUserId(), randomEventType())));
+
+        return Flux.zip(interval, events).map(Tuple2::getT2);
+    }
+
+    private String randomUserId() {
+        String[] choices = "zduo,fangchiw,lijieg,chuanweig".split(",");
+        return choices[new Random().nextInt(choices.length)];
+    }
+
+    private String randomEventType() {
+        return EventType.values()[new Random().nextInt(EventType.values().length)].toString();
+    }
+}
+
 interface MovieRepository extends ReactiveMongoRepository<Movie, String> {}
+
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString
+@Data
+class MovieEvent {
+
+    Movie movie;
+
+    Date date;
+
+    String userId;
+
+    String eventType;
+}
+
+enum EventType {
+    LIKE, DISLIKE, WATCH, WANT;
+}
 
 @Document
 @AllArgsConstructor
