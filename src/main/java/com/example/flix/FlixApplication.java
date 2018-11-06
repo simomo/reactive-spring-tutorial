@@ -12,7 +12,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -42,12 +47,36 @@ public class FlixApplication {
     }
 }
 
+@RestController
+@RequestMapping("/movie")
+class FlixRestController {
+
+    @Autowired
+    private FlixService flixService;
+
+    @GetMapping
+    public Flux<Movie> all() {
+        return flixService.all();
+    }
+
+    @GetMapping("/{id}")
+    public Mono<Movie> byId(@PathVariable String id) {
+        return flixService.byId(id);
+    }
+
+    @GetMapping(value = "/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<MovieEvent> events(@PathVariable String id) {
+        return flixService.byId(id)
+                .flatMapMany(flixService::events);
+    }
+}
+
 
 @Service
 class FlixService {
 
     @Autowired
-    MovieRepository movieRepository;
+    private MovieRepository movieRepository;
 
     public Flux<Movie> all() {
         return movieRepository.findAll();
@@ -57,7 +86,7 @@ class FlixService {
         return movieRepository.findById(id);
     }
 
-    public Flux<MovieEvent> getEvents(Movie movie) {
+    public Flux<MovieEvent> events(Movie movie) {
         Flux<Long> interval = Flux.interval(Duration.ofSeconds(1));
         Flux<MovieEvent> events = Flux.fromStream(Stream.generate(() -> new MovieEvent(movie, new Date(), randomUserId(), randomEventType())));
 

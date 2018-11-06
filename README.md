@@ -61,3 +61,60 @@ private String randomEventType() {
     return EventType.values()[new Random().nextInt(EventType.values().length)].toString();
 }
 ```
+
+## How to generate a stream
+
+### `Stream.of(T ...)`
+
+Create a static stream.
+```java
+Stream.of("Hero", "3 idiots", "Huang Fei Hong")
+```
+
+### `Stream.generate(() -> {})`
+
+Create a dynamic stream, every time we get one value from a stream, the lambda will be called.
+```java
+Stream.generate(() -> new MovieEvent(movie, new Date(), randomUserId(), randomEventType()))
+```
+
+## How to generate a Flux
+
+### `Flux.interval(Duration period)`
+
+```java
+Flux.interval(Duration.ofSeconds(1));
+```
+
+### `Flux.fromStream(Stream<? extends T> s)`
+
+```java
+Flux.fromStream(Stream.generate(() -> new MovieEvent(movie, new Date(), randomUserId(), randomEventType())));
+```
+
+### More...
+
+[[Reactor Java #1] How to create Mono and Flux ?](https://medium.com/@cheron.antoine/reactor-java-1-how-to-create-mono-and-flux-471c505fa158)
+And its brother articles are also worth to read.
+
+## URL mapping
+
+```java
+@RestController
+@RequestMapping("/movie")
+class FlixRestController {
+    
+    @GetMapping("/{id}")
+    public Mono<Movie> byId(@PathVariable String id) {}
+}
+```
+
+## `flixService.byId(id).flatMapMany(flixService::events)`
+
+### Async Dependency
+
+It makes `flixService.events` is called after `byId` returns a event.
+
+### `flatMapMany` vs `flatMap`
+
+In latest spring, `flatmap` can only return `Mono`, if you want to map one item to multiple items, you have use `flatMapMany` instead.
